@@ -1,0 +1,663 @@
+<title>WeKnora Wiki 解析流程图</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #f6f8fb;
+    --surface: #ffffff;
+    --surface-2: #eef2f8;
+    --surface-3: #e4eaf3;
+    --ink: #17202f;
+    --ink-soft: #55617a;
+    --ink-faint: #8793a9;
+    --line: #d5dcea;
+    --line-strong: #b9c3d6;
+    --accent: #4f46e5;
+
+    /* semantic node-type hues */
+    --c-control: #6366f1;
+    --c-llm: #a855f7;
+    --c-db: #0ea472;
+    --c-redis: #e08a00;
+    --c-text: #0891b2;
+    --c-guard: #e11d5b;
+
+    --c-control-bg: #eef0fe;
+    --c-llm-bg: #f6edfe;
+    --c-db-bg: #e6f6ef;
+    --c-redis-bg: #fdf2df;
+    --c-text-bg: #e2f5fa;
+    --c-guard-bg: #fdeaf1;
+
+    --radius: 14px;
+    --radius-sm: 9px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0f17;
+      --surface: #141a25;
+      --surface-2: #1b2331;
+      --surface-3: #222c3d;
+      --ink: #e8edf6;
+      --ink-soft: #9aa7bf;
+      --ink-faint: #6b7791;
+      --line: #2a3446;
+      --line-strong: #3a475e;
+      --accent: #818cf8;
+
+      --c-control: #8b93ff;
+      --c-llm: #c88bff;
+      --c-db: #34d99a;
+      --c-redis: #f6b02f;
+      --c-text: #2bc0dd;
+      --c-guard: #ff5f8a;
+
+      --c-control-bg: #1c2140;
+      --c-llm-bg: #291d3c;
+      --c-db-bg: #123024;
+      --c-redis-bg: #322613;
+      --c-text-bg: #10303a;
+      --c-guard-bg: #331526;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f8fb; --surface: #ffffff; --surface-2: #eef2f8; --surface-3: #e4eaf3;
+    --ink: #17202f; --ink-soft: #55617a; --ink-faint: #8793a9; --line: #d5dcea; --line-strong: #b9c3d6; --accent: #4f46e5;
+    --c-control:#6366f1; --c-llm:#a855f7; --c-db:#0ea472; --c-redis:#e08a00; --c-text:#0891b2; --c-guard:#e11d5b;
+    --c-control-bg:#eef0fe; --c-llm-bg:#f6edfe; --c-db-bg:#e6f6ef; --c-redis-bg:#fdf2df; --c-text-bg:#e2f5fa; --c-guard-bg:#fdeaf1;
+  }
+  :root[data-theme="dark"] {
+    --bg:#0b0f17; --surface:#141a25; --surface-2:#1b2331; --surface-3:#222c3d;
+    --ink:#e8edf6; --ink-soft:#9aa7bf; --ink-faint:#6b7791; --line:#2a3446; --line-strong:#3a475e; --accent:#818cf8;
+    --c-control:#8b93ff; --c-llm:#c88bff; --c-db:#34d99a; --c-redis:#f6b02f; --c-text:#2bc0dd; --c-guard:#ff5f8a;
+    --c-control-bg:#1c2140; --c-llm-bg:#291d3c; --c-db-bg:#123024; --c-redis-bg:#322613; --c-text-bg:#10303a; --c-guard-bg:#331526;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1200px 600px at 80% -5%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%),
+      var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 44px 24px 80px; }
+
+  /* ---------- header ---------- */
+  header.masthead { margin-bottom: 34px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin: 0 0 12px;
+  }
+  h1 {
+    font-size: clamp(28px, 4.5vw, 44px); line-height: 1.08; margin: 0 0 14px; letter-spacing: -0.02em;
+    text-wrap: balance; font-weight: 750;
+  }
+  .lede { font-size: 17px; color: var(--ink-soft); max-width: 68ch; margin: 0; }
+  .lede code { font-family: var(--mono); font-size: .88em; background: var(--surface-2); padding: 1px 6px; border-radius: 5px; }
+
+  .meta-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+  .chip {
+    font-family: var(--mono); font-size: 12px; color: var(--ink-soft);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
+  }
+  .chip b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- legend ---------- */
+  .legend {
+    margin: 28px 0 8px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 18px 20px;
+  }
+  .legend h2, .stores h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-faint); margin: 0 0 14px; font-weight: 700; }
+  .legend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 20px; }
+  .legend-item { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; }
+  .legend-item .swatch { width: 14px; height: 14px; border-radius: 4px; margin-top: 3px; flex: none; border: 1px solid rgba(0,0,0,.12); }
+  .legend-item b { display: block; color: var(--ink); font-weight: 600; }
+  .legend-item span { color: var(--ink-soft); font-size: 12.5px; }
+
+  /* ---------- pipeline ---------- */
+  .pipeline { display: flex; flex-direction: column; gap: 0; margin-top: 30px; }
+
+  .stage {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 22px 22px 24px; position: relative;
+  }
+  .stage-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; flex-wrap: wrap; }
+  .stage-num {
+    font-family: var(--mono); font-weight: 700; font-size: 13px; color: var(--surface);
+    background: var(--accent); width: 30px; height: 30px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center; flex: none; align-self: center;
+  }
+  .stage-title { font-size: 20px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  .stage-tag {
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft); background: var(--surface-2);
+    border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px;
+  }
+  .stage-desc { color: var(--ink-soft); font-size: 14px; margin: 4px 0 18px; max-width: 78ch; }
+  .stage-desc code, .node code, .callout code, .parallel-label code { font-family: var(--mono); font-size: .86em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; color: var(--ink); }
+
+  /* connector between stages */
+  .connector {
+    display: flex; flex-direction: column; align-items: center; gap: 0; padding: 2px 0;
+  }
+  .connector .line { width: 2px; height: 20px; background: linear-gradient(var(--line-strong), var(--line-strong)); }
+  .connector .payload {
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft);
+    background: var(--surface-2); border: 1px dashed var(--line-strong); border-radius: 999px;
+    padding: 4px 13px; margin: 3px 0; max-width: 90%; text-align: center;
+  }
+  .connector .arrow { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--line-strong); }
+
+  /* node cards */
+  .flow { display: flex; flex-direction: column; gap: 12px; }
+  .row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; }
+  .node {
+    flex: 1 1 220px; min-width: 200px; background: var(--surface-2); border: 1px solid var(--line);
+    border-left: 4px solid var(--nc, var(--line-strong)); border-radius: var(--radius-sm);
+    padding: 12px 14px; position: relative;
+  }
+  .node.control { --nc: var(--c-control); background: var(--c-control-bg); }
+  .node.llm     { --nc: var(--c-llm);     background: var(--c-llm-bg); }
+  .node.db      { --nc: var(--c-db);      background: var(--c-db-bg); }
+  .node.redis   { --nc: var(--c-redis);   background: var(--c-redis-bg); }
+  .node.text    { --nc: var(--c-text);    background: var(--c-text-bg); }
+  .node.guard   { --nc: var(--c-guard);   background: var(--c-guard-bg); }
+
+  .node .n-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .node .n-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--nc); flex: none; }
+  .node .n-title { font-weight: 650; font-size: 14px; letter-spacing: -0.005em; }
+  .node .n-fn { font-family: var(--mono); font-size: 11px; color: var(--nc); font-weight: 600; margin-left: auto; opacity: .95; }
+  .node .n-body { font-size: 12.7px; color: var(--ink-soft); }
+  .node .n-body b { color: var(--ink); font-weight: 600; }
+
+  /* inline right-arrow between nodes in a sequence row */
+  .seq { display: flex; flex-wrap: wrap; align-items: stretch; gap: 4px; }
+  .seq > .node { flex: 1 1 200px; }
+  .arrow-h { align-self: center; color: var(--ink-faint); font-size: 18px; padding: 0 2px; flex: none; }
+
+  /* parallel fork block */
+  .parallel { border: 1.5px dashed var(--line-strong); border-radius: var(--radius-sm); padding: 12px; background: color-mix(in srgb, var(--surface) 55%, transparent); }
+  .parallel-label {
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft); text-transform: none;
+    display: inline-flex; align-items: center; gap: 7px; margin-bottom: 11px; font-weight: 600;
+  }
+  .parallel-label::before { content: "⑃"; color: var(--accent); font-size: 15px; }
+  .parallel .row > .node { flex: 1 1 240px; }
+
+  /* branch / note callout */
+  .callout {
+    display: flex; gap: 10px; align-items: flex-start; font-size: 12.6px; color: var(--ink-soft);
+    background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--c-guard);
+    border-radius: 8px; padding: 9px 13px; margin-top: 2px;
+  }
+  .callout .b-ico { color: var(--c-guard); font-weight: 700; font-family: var(--mono); flex: none; }
+  .callout.info { border-left-color: var(--c-control); }
+  .callout.info .b-ico { color: var(--c-control); }
+
+  .mini-label { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); margin: 4px 0 2px; font-weight: 700; }
+
+  /* ---------- data stores ---------- */
+  .stores { margin-top: 34px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
+  .store-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .store {
+    border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; background: var(--surface-2);
+    border-top: 3px solid var(--sc, var(--line-strong));
+  }
+  .store.pg { --sc: var(--c-db); }
+  .store.redis { --sc: var(--c-redis); }
+  .store .s-name { font-family: var(--mono); font-weight: 650; font-size: 13px; color: var(--ink); margin-bottom: 4px; }
+  .store .s-desc { font-size: 12.4px; color: var(--ink-soft); }
+
+  footer { margin-top: 40px; text-align: center; color: var(--ink-faint); font-size: 12.5px; }
+  footer code { font-family: var(--mono); }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 30px 15px 60px; }
+    .node .n-fn { display: none; }
+    .arrow-h { transform: rotate(90deg); width: 100%; text-align: center; padding: 2px 0; }
+    .seq { flex-direction: column; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">WeKnora · 知识库 Wiki 生成管线</p>
+    <h1>Wiki 解析流程：从文档到结构化知识库</h1>
+    <p class="lede">
+      Wiki 是一条<strong>异步、LLM 驱动的 Map–Reduce 管线</strong>。文档完成解析分块后被排队，批处理器并行地把每篇文档
+      抽取成实体 / 概念 / 摘要页面，再按 <code>slug</code> 归并写入 <code>wiki_pages</code>，最后经一次防抖的
+      KB 级收敛重建索引与交叉链接。下图给出完整数据流、每个节点做什么、以及怎么做。
+    </p>
+    <div class="meta-row">
+      <span class="chip"><b>入口</b> ProcessWikiIngest</span>
+      <span class="chip"><b>队列</b> asynq · QueueWiki</span>
+      <span class="chip"><b>持久化</b> task_pending_ops</span>
+      <span class="chip"><b>核心文件</b> internal/application/service/wiki_ingest*.go</span>
+    </div>
+  </header>
+
+  <!-- LEGEND -->
+  <section class="legend" aria-label="图例">
+    <h2>图例 · 节点类型</h2>
+    <div class="legend-grid">
+      <div class="legend-item"><span class="swatch" style="background:var(--c-control)"></span><div><b>控制 / 调度</b><span>asynq 触发、errgroup 并发、防抖与重试</span></div></div>
+      <div class="legend-item"><span class="swatch" style="background:var(--c-llm)"></span><div><b>LLM 调用</b><span>抽取 / 摘要 / 引用 / 归并 / 去重</span></div></div>
+      <div class="legend-item"><span class="swatch" style="background:var(--c-db)"></span><div><b>数据库写入</b><span>Postgres：wiki_pages / log / folders</span></div></div>
+      <div class="legend-item"><span class="swatch" style="background:var(--c-redis)"></span><div><b>Redis / 锁</b><span>slug 锁、在途配额、删除墓碑</span></div></div>
+      <div class="legend-item"><span class="swatch" style="background:var(--c-text)"></span><div><b>纯文本处理</b><span>无 LLM：链接清洗 / 交叉链接注入</span></div></div>
+      <div class="legend-item"><span class="swatch" style="background:var(--c-guard)"></span><div><b>守卫 / 分支</b><span>竞态检查、跳过、失败重排</span></div></div>
+    </div>
+  </section>
+
+  <div class="pipeline">
+
+    <!-- STAGE 0 -->
+    <section class="stage">
+      <div class="stage-head">
+        <span class="stage-num">0</span>
+        <h3 class="stage-title">上游触发 · 文档就绪后入队</h3>
+        <span class="stage-tag">knowledge_post_process.go</span>
+      </div>
+      <p class="stage-desc">
+        文档上传后先走通用的解析→分块→向量化管线。当知识库开启 Wiki 且存在文本 chunk 时，
+        后处理阶段把「生成 Wiki」当作一个子任务计数，并投递一条防抖的批处理触发。
+      </p>
+      <div class="flow">
+        <div class="seq">
+          <div class="node db">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">文档解析 · 分块</span></div>
+            <div class="n-body">上传的文件被解析为文本并切分为 <b>chunks</b>，落库 <code>chunks</code> 表。</div>
+          </div>
+          <span class="arrow-h">▶</span>
+          <div class="node control">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">后处理判定</span><span class="n-fn">willSpawnWiki</span></div>
+            <div class="n-body"><code>WikiEnabled && len(textChunks)&gt;0</code> 时决定派生 Wiki 子任务。</div>
+          </div>
+          <span class="arrow-h">▶</span>
+          <div class="node control">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">计数占位</span><span class="n-fn">SetFinalizing +1</span></div>
+            <div class="n-body">给知识行的 finalizing 计数 <b>+1</b>，让文档在 Wiki 真正写完前保持「处理中」。</div>
+          </div>
+          <span class="arrow-h">▶</span>
+          <div class="node control">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">入队</span><span class="n-fn">EnqueueWikiIngest</span></div>
+            <div class="n-body">写入一条 <code>task_pending_ops</code> 行 + 投递 asynq 触发（<b>ProcessIn 30s</b> 防抖合并批量上传）。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="connector">
+      <div class="line"></div>
+      <div class="payload">task_pending_ops 行 (op=ingest, dedup_key=knowledgeID) + asynq wiki:ingest 触发</div>
+      <div class="arrow"></div>
+    </div>
+
+    <!-- STAGE 1 -->
+    <section class="stage">
+      <div class="stage-head">
+        <span class="stage-num">1</span>
+        <h3 class="stage-title">批次调度 · 并发闸门与领取</h3>
+        <span class="stage-tag">ProcessWikiIngest</span>
+      </div>
+      <p class="stage-desc">
+        30 秒后触发落到 wiki 工作池。这里解决「同一 KB 多批并发、既不重复处理又不互相饿死」的问题：
+        Redis 模式用<strong>行领取 + 每 KB 在途配额</strong>，Lite 模式用<strong>进程内每 KB 互斥锁</strong>。
+      </p>
+      <div class="flow">
+        <div class="row">
+          <div class="node redis">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">并发闸门</span><span class="n-fn">reserveInflightSlot</span></div>
+            <div class="n-body">Redis：每 KB 在途批次上限（默认 4）。Lua 原子占槽，防止单 KB 独占整个 wiki 池。Lite：<code>liteLocks</code> 每 KB 串行。</div>
+          </div>
+          <div class="node control">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">领取待处理行</span><span class="n-fn">claimPendingList</span></div>
+            <div class="n-body">Redis：<code>FOR UPDATE SKIP LOCKED</code> 认领不相交的一批（默认 5 篇）；回收 90 分钟过期的崩溃认领。Lite 用 <code>peekPendingList</code>。</div>
+          </div>
+          <div class="node control">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">按文档去重</span><span class="n-fn">decodePendingRows</span></div>
+            <div class="n-body">按 <code>knowledge_id</code> 折叠，<b>保留最后一次操作</b>（如「上传后立刻删除」→ 只留 retract）。</div>
+          </div>
+          <div class="node control">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">加载 KB 调优参数</span></div>
+            <div class="n-body">读取 <code>batchSize</code> / <code>mapParallel</code> / <code>reduceParallel</code> / 抽取粒度，供本批统一使用。</div>
+          </div>
+        </div>
+        <div class="callout"><span class="b-ico">⎇</span><div><b>无行可领</b> → <code>scheduleStaleClaimRecheck</code> 布置一个越过 90 分钟阈值的安全网触发，避免崩溃批次留下的行永久搁浅；<b>达到在途上限</b> → <code>scheduleCappedRetry</code> 合并式延后重试。</div></div>
+      </div>
+    </section>
+
+    <div class="connector">
+      <div class="line"></div>
+      <div class="payload">[]WikiPendingOp（本批 ≤5 篇文档）+ WikiBatchContext（懒加载缓存）</div>
+      <div class="arrow"></div>
+    </div>
+
+    <!-- STAGE 2 -->
+    <section class="stage">
+      <div class="stage-head">
+        <span class="stage-num">2</span>
+        <h3 class="stage-title">MAP 阶段 · 逐篇并行抽取</h3>
+        <span class="stage-tag">mapOneDocument · errgroup(mapParallel)</span>
+      </div>
+      <p class="stage-desc">
+        批内每篇文档并行跑一条独立的抽取流水线，产出「按 slug 分组的更新指令」<code>[]SlugUpdate</code>，
+        但<strong>此阶段不写库</strong>。单篇失败只记入 <code>failedOps</code>，不拖垮整批。
+      </p>
+      <div class="flow">
+        <div class="mini-label">单篇文档流水线（重复 N 次并行）</div>
+        <div class="seq">
+          <div class="node guard">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">删除竞态守卫</span><span class="n-fn">isKnowledgeGone</span></div>
+            <div class="n-body">30s 排队窗口内文档若被删则跳过，避免生成指向「幽灵」source_ref 的页面。</div>
+          </div>
+          <span class="arrow-h">▶</span>
+          <div class="node db">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">取 chunk · 重建正文</span><span class="n-fn">reconstructEnrichedContent</span></div>
+            <div class="n-body">读 <code>chunks</code> 拼回富文本，截断至 <b>32768</b> 字符。</div>
+          </div>
+          <span class="arrow-h">▶</span>
+          <div class="node guard">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">文本充足性守卫</span><span class="n-fn">hasSufficientText</span></div>
+            <div class="n-body">扫描件 OCR 无有效文本则跳过，防止 LLM 凭空编造。</div>
+          </div>
+        </div>
+
+        <div class="connector" style="padding:0"><div class="line"></div><div class="arrow"></div></div>
+
+        <div class="node llm">
+          <div class="n-head"><span class="n-dot"></span><span class="n-title">Pass 0 · 候选 slug 抽取</span><span class="n-fn">extractCandidateSlugs</span></div>
+          <div class="n-body">LLM（<code>WikiCandidateSlugPrompt</code>）扫全文，产出实体 + 概念的<b>轻量骨架</b>（只要 name/slug/别名，不要完整事实）。失败则回退到旧式单发抽取 <code>WikiKnowledgeExtractPrompt</code>。</div>
+        </div>
+
+        <div class="connector" style="padding:0"><div class="line"></div><div class="arrow"></div></div>
+
+        <div class="parallel">
+          <span class="parallel-label">并行 · <code>sync.WaitGroup</code>（两路同时进行）</span>
+          <div class="row">
+            <div class="node llm">
+              <div class="n-head"><span class="n-dot"></span><span class="n-title">文档摘要</span><span class="n-fn">WikiSummaryPrompt</span></div>
+              <div class="n-body">生成结构化 <b>摘要页</b>，并按候选 slug 列表注入 <code>[[wiki 链接]]</code>；拆出一句话 headline + 正文 body。</div>
+            </div>
+            <div class="node llm">
+              <div class="n-head"><span class="n-dot"></span><span class="n-title">分块引用归类</span><span class="n-fn">classifyChunkCitations</span></div>
+              <div class="n-body">LLM（<code>WikiChunkCitationPrompt</code>）按 12k 字分批扫 chunk，判定<b>每个候选 slug 由哪些具体 chunk 支撑</b>，并可发现新 slug。</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="connector" style="padding:0"><div class="line"></div><div class="arrow"></div></div>
+
+        <div class="seq">
+          <div class="node control">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">合并引用</span><span class="n-fn">mergeCitationsIntoItems</span></div>
+            <div class="n-body">把 chunk 引用回填进每个实体/概念；无引用者退回 Description 兜底。</div>
+          </div>
+          <span class="arrow-h">▶</span>
+          <div class="node guard">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">新旧页面对账</span></div>
+            <div class="n-body">对比该文档<b>旧页面集</b>与<b>新抽取集</b>：不再出现 → <code>retractStale</code>；重解析重叠 → <code>retract</code>+新增；据此生成撤回指令。</div>
+          </div>
+          <span class="arrow-h">▶</span>
+          <div class="node control">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">产出更新指令</span><span class="n-fn">[]SlugUpdate</span></div>
+            <div class="n-body">摘要 / 实体 / 概念 / 撤回，均<b>按 slug 归组</b>汇入批级 <code>slugUpdates</code> map。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="connector">
+      <div class="line"></div>
+      <div class="payload">map[slug][]SlugUpdate （跨全批所有文档合并）</div>
+      <div class="arrow"></div>
+    </div>
+
+    <!-- STAGE 2.5 -->
+    <section class="stage">
+      <div class="stage-head">
+        <span class="stage-num">2·5</span>
+        <h3 class="stage-title">目录规划 · 每批一次</h3>
+        <span class="stage-tag">planBatchTaxonomy</span>
+      </div>
+      <p class="stage-desc">
+        Reduce 是并行写页的，无法各自收敛到同一套目录，因此在 Reduce 之前<strong>集中规划一次</strong>：
+        给本批每个新 slug 分配一致的 <code>category_path</code>，尽量复用已有文件夹。
+      </p>
+      <div class="flow">
+        <div class="seq">
+          <div class="node llm">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">目录规划</span><span class="n-fn">WikiTaxonomyPlanPrompt</span></div>
+            <div class="n-body">LLM 把全批 slug 归入一棵连贯的目录树；相似度预筛只喂相关的已有文件夹（超 60 个才启用嵌入选择）。</div>
+          </div>
+          <span class="arrow-h">▶</span>
+          <div class="node db">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">文件夹解析落库</span><span class="n-fn">resolvePlannedFolders</span></div>
+            <div class="n-body"><b>串行</b>创建/复用 <code>wiki_folders</code>，得到 <code>PlannedFolderID</code>（slug→folderID），供并行 Reduce 只读取用。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="connector">
+      <div class="line"></div>
+      <div class="payload">batchCtx.PlannedFolderID（slug → wiki_folders.id）</div>
+      <div class="arrow"></div>
+    </div>
+
+    <!-- STAGE 3 -->
+    <section class="stage">
+      <div class="stage-head">
+        <span class="stage-num">3</span>
+        <h3 class="stage-title">REDUCE 阶段 · 按 slug 并行写页</h3>
+        <span class="stage-tag">reduceSlugUpdates · errgroup(reduceParallel)</span>
+      </div>
+      <p class="stage-desc">
+        以 slug 为单位并行做「读—改—写」。一个共享实体页可能被多篇文档同时贡献，因此每个 slug 用
+        <strong>Redis slug 锁</strong>串行化，避免并发批次相互覆盖丢更新。
+      </p>
+      <div class="flow">
+        <div class="mini-label">单个 slug 的归并（按 slug 并行）</div>
+        <div class="seq">
+          <div class="node redis">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">slug 锁</span><span class="n-fn">withSlugLock</span></div>
+            <div class="n-body">Redis <code>SetNX</code>（TTL 5m，等待 ≤2m）序列化同 slug 读改写；Lite 直接执行。抢不到 → 记入 unapplied 稍后重排。</div>
+          </div>
+          <span class="arrow-h">▶</span>
+          <div class="node guard">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">存活过滤</span><span class="n-fn">filterLiveUpdates</span></div>
+            <div class="n-body">Map→Reduce 间文档若被删，丢弃其新增/摘要更新（保留 retract）。</div>
+          </div>
+          <span class="arrow-h">▶</span>
+          <div class="node db">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">取现有页</span><span class="n-fn">GetPageBySlug</span></div>
+            <div class="n-body">存在→更新；不存在且有新增→合成一张 <b>draft</b> 页。</div>
+          </div>
+        </div>
+
+        <div class="connector" style="padding:0"><div class="line"></div><div class="arrow"></div></div>
+
+        <div class="row">
+          <div class="node db" style="flex-basis:100%">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">分支 A · 摘要页</span></div>
+            <div class="n-body">直接用新的 SummaryBody <b>整页覆盖</b>，追加 source_ref，清空 chunk 引用 → <code>Create/UpdatePage</code>。</div>
+          </div>
+        </div>
+        <div class="parallel">
+          <span class="parallel-label">分支 B · 实体 / 概念页（有新增和/或撤回）</span>
+          <div class="seq">
+            <div class="node llm">
+              <div class="n-head"><span class="n-dot"></span><span class="n-title">去重合并</span><span class="n-fn">deduplicateExtractedBatch</span></div>
+              <div class="n-body">用 pg_trgm 三元组索引预筛相似页，LLM（<code>WikiDeduplicationPrompt</code>）判定是否指向同一实体并归并 slug。</div>
+            </div>
+            <span class="arrow-h">▶</span>
+            <div class="node db">
+              <div class="n-head"><span class="n-dot"></span><span class="n-title">取引用块正文</span><span class="n-fn">resolveCitedChunks</span></div>
+              <div class="n-body">按 SourceChunks 批量取回 chunk 原文，拼成 <code>&lt;new_information&gt;</code> 证据块（含文档级 <code>&lt;source_context&gt;</code>）。</div>
+            </div>
+            <span class="arrow-h">▶</span>
+            <div class="node llm">
+              <div class="n-head"><span class="n-dot"></span><span class="n-title">页面编辑合并</span><span class="n-fn">WikiPageModifyPrompt</span></div>
+              <div class="n-body">LLM 把「新增信息 + 需删除的旧贡献」在<b>一遍</b>内合入现有页面正文，实现 replace-not-append 语义。</div>
+            </div>
+            <span class="arrow-h">▶</span>
+            <div class="node db">
+              <div class="n-head"><span class="n-dot"></span><span class="n-title">写页 + 归档目录</span><span class="n-fn">Create/UpdatePage</span></div>
+              <div class="n-body">写 <code>wiki_pages</code>（draft），应用 <code>PlannedFolderID</code>（仅对未归档的页）。</div>
+            </div>
+          </div>
+        </div>
+        <div class="callout"><span class="b-ico">⎇</span><div>页面生成 LLM 失败 → 记入 <code>failedAdditionSlugs</code>（后续清洗死链）；slug 锁抢不到或 reduce 出错 → 贡献文档记入 <code>unappliedSlugKIDs</code>，走失败重排预算而非静默丢弃。</div></div>
+      </div>
+    </section>
+
+    <div class="connector">
+      <div class="line"></div>
+      <div class="payload">allPagesAffected []slug · docResults · failed/unapplied 集合</div>
+      <div class="arrow"></div>
+    </div>
+
+    <!-- STAGE 4 -->
+    <section class="stage">
+      <div class="stage-head">
+        <span class="stage-num">4</span>
+        <h3 class="stage-title">批次收尾 · 发布、记账与结算</h3>
+        <span class="stage-tag">ProcessWikiIngest 尾段</span>
+      </div>
+      <p class="stage-desc">
+        把本批成果落地并对认领的行做<strong>终态结算</strong>：成功删除、失败重排或死信。昂贵的 KB 级收敛不在这里做，
+        而是记入 finalize 车道推迟合并。
+      </p>
+      <div class="flow">
+        <div class="row">
+          <div class="node text">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">清洗摘要死链</span><span class="n-fn">sanitizeDeadSummaryLinks</span></div>
+            <div class="n-body">纯文本：把摘要里指向「生成失败 slug」的 <code>[[链接]]</code> 修复或降级为纯文本。</div>
+          </div>
+          <div class="node db">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">批量写日志</span><span class="n-fn">AppendBatch</span></div>
+            <div class="n-body">一次 INSERT 写入 <code>wiki_log_entries</code>（ingest/retract 事件，携带受影响页）。</div>
+          </div>
+          <div class="node db">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">发布草稿页</span><span class="n-fn">publishDraftPages</span></div>
+            <div class="n-body">draft → <b>published</b>，用户立刻可见（不等收敛窗口）。</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="node control">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">投递收敛任务</span><span class="n-fn">enqueueFinalize</span></div>
+            <div class="n-body">把受影响 slug + 新标题 + 增删变更写入 <code>task_pending_ops</code> 的 <b>finalize 车道</b>，并合并式触发。</div>
+          </div>
+          <div class="node control">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">释放计数</span><span class="n-fn">finalizeWikiSubtask</span></div>
+            <div class="n-body">成功文档的 finalizing 计数 <b>-1</b>；归零后知识行才转为 completed。</div>
+          </div>
+          <div class="node control">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">结算认领行</span><span class="n-fn">trim / requeueFailedOps</span></div>
+            <div class="n-body">成功 → <code>DeleteByIDs</code>；失败 → fail_count+1 重排，超 5 次 → 归档 <code>task_dead_letters</code>。</div>
+          </div>
+        </div>
+        <div class="callout info"><span class="b-ico">↻</span><div><code>scheduleFollowUp</code> 排定后续批次续drain剩余行：正常 5s；命中上游限流（429/配额）则退避到 60s，避免继续冲击已饱和的速率窗口。</div></div>
+      </div>
+    </section>
+
+    <div class="connector">
+      <div class="line"></div>
+      <div class="payload">finalize 车道行（防抖合并）· asynq wiki:finalize 触发（ProcessIn 20s）</div>
+      <div class="arrow"></div>
+    </div>
+
+    <!-- STAGE 5 -->
+    <section class="stage">
+      <div class="stage-head">
+        <span class="stage-num">5</span>
+        <h3 class="stage-title">FINALIZE 阶段 · KB 级收敛（防抖合并）</h3>
+        <span class="stage-tag">ProcessWikiFinalize</span>
+      </div>
+      <p class="stage-desc">
+        KB 级的昂贵收敛工作过去在每个 5 篇批次尾部都跑一次，现改为<strong>每 KB 防抖合并成一次</strong>：
+        一波 N 篇文档只重建<strong>一次</strong>索引。用 <code>asynq.TaskID</code> + finalize 锁保证同 KB 不并发。
+      </p>
+      <div class="flow">
+        <div class="seq">
+          <div class="node control">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">排空 finalize 车道</span><span class="n-fn">PeekBatch</span></div>
+            <div class="n-body">聚合受影响 slug、交叉链接引用、以及索引变更描述（新增/移除文档）。</div>
+          </div>
+          <span class="arrow-h">▶</span>
+          <div class="node llm">
+            <div class="n-head"><span class="n-dot"></span><span class="n-title">重建索引简介</span><span class="n-fn">rebuildIndexPage</span></div>
+            <div class="n-body">首次：<code>WikiIndexIntroPrompt</code> 采样近 200 篇摘要生成；增量：<code>WikiIndexIntroUpdatePrompt</code> 仅凭变更描述更新。</div>
+          </div>
+        </div>
+        <div class="parallel">
+          <span class="parallel-label">纯文本收敛（无 LLM，限本批受影响页）</span>
+          <div class="row">
+            <div class="node text">
+              <div class="n-head"><span class="n-dot"></span><span class="n-title">死链清理</span><span class="n-fn">cleanDeadLinks</span></div>
+              <div class="n-body"><code>ExistsSlugs</code> 批量探测出链，把指向已删/归档页的 <code>[[链接]]</code> 修复或剥离。</div>
+            </div>
+            <div class="node text">
+              <div class="n-head"><span class="n-dot"></span><span class="n-title">交叉链接注入</span><span class="n-fn">injectCrossLinks</span></div>
+              <div class="n-body">在受影响页正文里，把提到其他页标题/别名之处 linkify 成 <code>[[wiki 链接]]</code>。</div>
+            </div>
+          </div>
+        </div>
+        <div class="callout info"><span class="b-ico">↻</span><div>处理完 <code>trimPendingList</code> 排空这批 finalize 行；若期间又有新行落入，则 <code>scheduleFinalize</code> 再排一次收敛。</div></div>
+      </div>
+    </section>
+
+    <div class="connector">
+      <div class="line"></div>
+      <div class="payload">收敛完成 → 索引页 / 交叉链接就绪，Wiki 对用户完全可用</div>
+      <div class="arrow"></div>
+    </div>
+
+    <section class="stage" style="border-style:solid; border-color:var(--c-db); background:var(--c-db-bg)">
+      <div class="stage-head">
+        <span class="stage-num" style="background:var(--c-db)">✓</span>
+        <h3 class="stage-title">完成 · 结构化 Wiki 知识库</h3>
+      </div>
+      <p class="stage-desc" style="margin-bottom:0">
+        每篇文档现由<strong>摘要页 + 若干实体/概念页</strong>表示，页面间以 <code>[[wiki 链接]]</code> 互联、归入目录树，
+        索引页给出全局导览，变更历史记录在日志。前端 <code>WikiBrowser.vue</code> 即渲染此结构。
+      </p>
+    </section>
+  </div>
+
+  <!-- DATA STORES -->
+  <section class="stores">
+    <h2>数据流落点 · 持久化与状态</h2>
+    <div class="store-grid">
+      <div class="store pg"><div class="s-name">task_pending_ops</div><div class="s-desc">耐久操作队列，两条车道：<code>wiki:ingest</code>（每文档一行，dedup_key=knowledgeID）与 <code>wiki:finalize</code>（受影响 slug / 变更）。取代了会被 24h TTL 清掉的旧 Redis 列表。</div></div>
+      <div class="store pg"><div class="s-name">wiki_pages</div><div class="s-desc">最终产物：entity / concept / summary / index / log 页。含 content、source_refs、chunk_refs、out_links、aliases、folder_id、status(draft→published)。</div></div>
+      <div class="store pg"><div class="s-name">wiki_folders</div><div class="s-desc">目录树；由 Stage 2·5 的目录规划串行创建/复用，Reduce 只读分配。</div></div>
+      <div class="store pg"><div class="s-name">wiki_log_entries</div><div class="s-desc">变更历史流（每事件一行），供日志 feed；批量 AppendBatch 写入避免写放大。</div></div>
+      <div class="store pg"><div class="s-name">task_dead_letters</div><div class="s-desc">超过 5 次重试预算的操作归档于此，人工/巡检可查。</div></div>
+      <div class="store pg"><div class="s-name">chunks</div><div class="s-desc">上游分块正文，Map 阶段重建文档、Reduce 阶段取引用证据的来源。</div></div>
+      <div class="store redis"><div class="s-name">Redis · slug 锁</div><div class="s-desc"><code>wiki:slug:{kb}:{slug}</code> 序列化同 slug 读改写（Phase 3 去掉了每 KB 独占锁后仍保证共享页不丢更新）。</div></div>
+      <div class="store redis"><div class="s-name">Redis · 在途配额 / 墓碑</div><div class="s-desc"><code>wiki:inflight:{kb}</code> 有序集限每 KB 并发批次；<code>wiki:deleted:{kb}:{kid}</code> 删除墓碑让在途任务快速短路。</div></div>
+    </div>
+  </section>
+
+  <footer>
+    图示据 <code>internal/application/service/wiki_ingest.go · wiki_ingest_batch.go · wiki_ingest_cite.go · wiki_ingest_taxonomy.go</code> 与 <code>internal/agent/prompts_wiki.go</code> 绘制 · 节点函数名可在源码中直接检索
+  </footer>
+</div>
+
+<script>
+  // Respect the viewer's theme toggle if the host stamps data-theme; otherwise follow OS.
+  (function () {
+    try {
+      var root = document.documentElement;
+      if (!root.hasAttribute('data-theme')) {
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+        // leave unset so the media-query tokens apply; toggle support already handled by [data-theme] rules
+      }
+    } catch (e) {}
+  })();
+</script>
